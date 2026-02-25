@@ -2,6 +2,7 @@
 package detect
 
 import (
+	"fmt"
 	"math"
 	"regexp"
 	"strings"
@@ -280,7 +281,7 @@ func GenerateReport(result *DetectionResult) string {
 
 	report += "=== Prompt Injection Detection Report ===\n\n"
 	report += "Is Injected: " + boolToString(result.IsInjected) + "\n"
-	report += "Confidence Score: " + string(rune(int(result.Score*100)+48)) + "%\n"
+	report += "Confidence Score: " + fmt.Sprintf("%.0f%%", result.Score*100) + "%\n"
 	report += "Detection Method: " + result.Method + "\n\n"
 
 	if len(result.Patterns) > 0 {
@@ -289,7 +290,7 @@ func GenerateReport(result *DetectionResult) string {
 			report += "[" + string(rune(i+49)) + "] " + string(pattern.Type) + "\n"
 			report += "    Name: " + pattern.Description + "\n"
 			report += "    Severity: " + pattern.Severity + "\n"
-			report += "    Confidence: " + string(rune(int(pattern.Confidence*100)+48)) + "%\n"
+			report += "    Confidence: " + fmt.Sprintf("%.0f%%", pattern.Confidence*100) + "%\n"
 			report += "    Evidence: " + pattern.Evidence[:min(len(pattern.Evidence), 50)] + "...\n"
 			report += "    Recommendation: " + pattern.Recommendation + "\n\n"
 		}

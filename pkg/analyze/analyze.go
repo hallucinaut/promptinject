@@ -2,6 +2,7 @@
 package analyze
 
 import (
+	"fmt"
 	"regexp"
 )
 
@@ -134,7 +135,7 @@ func GenerateReport(result *AnalysisResult) string {
 	var report string
 
 	report += "=== Prompt Injection Analysis Report ===\n\n"
-	report += "Risk Score: " + string(rune(int(result.Score*100)+48)) + "%\n"
+	report += "Risk Score: " + fmt.Sprintf("%.0f%%", result.Score*100) + "%\n"
 	report += "Risk Level: " + result.RiskLevel + "\n\n"
 
 	if len(result.Recommendations) > 0 {
