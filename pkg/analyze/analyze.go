@@ -3,7 +3,6 @@ package analyze
 
 import (
 	"regexp"
-	"strings"
 )
 
 // AnalysisResult contains analysis results.

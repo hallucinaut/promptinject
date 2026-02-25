@@ -79,7 +79,7 @@ func NewDetector() *Detector {
 			},
 			{
 				Name:     "Context Boundary Break",
-				Regex:    regexp.MustCompile(`(?i)^\s*(```|---|\*\*|\#\#)\s*`),
+Regex:    regexp.MustCompile("(?i)^\\s*(\\x60{3}|---|\\*\\*|\\#\\#)\\s*"),
 				Type:     TypeNested,
 				Weight:   0.7,
 				Category: "boundary",
@@ -286,7 +286,7 @@ func GenerateReport(result *DetectionResult) string {
 	if len(result.Patterns) > 0 {
 		report += "Detected Patterns:\n"
 		for i, pattern := range result.Patterns {
-			report += "[" + string(rune(i+49)) + "] " + pattern.Type + "\n"
+			report += "[" + string(rune(i+49)) + "] " + string(pattern.Type) + "\n"
 			report += "    Name: " + pattern.Description + "\n"
 			report += "    Severity: " + pattern.Severity + "\n"
 			report += "    Confidence: " + string(rune(int(pattern.Confidence*100)+48)) + "%\n"
