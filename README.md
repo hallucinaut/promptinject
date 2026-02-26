@@ -122,6 +122,11 @@ Confidence Score: 60%
 - **Data Extraction:** (`"reveal your secrets"`, `"print the confidential data"`)
 - **Code Execution:** (`"execute this bash script"`)
 - **Obfuscation:** (Base64 strings, long hexadecimal payloads)
+- **Advanced Heuristics:**
+  - **Context Window Flooding:** (Detects extremely long payloads designed to push constraints out of memory)
+  - **Information Entropy:** (Detects highly randomized strings indicative of unpadded base64 or custom encryption)
+  - **Symbol Injection:** (Detects payloads with abnormally high special-character density)
+  - **Semantic Combinations:** (Detects suspicious word groupings even when spaced apart)
 
 ## 🏗️ Architecture
 
