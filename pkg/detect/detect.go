@@ -3,7 +3,6 @@ package detect
 
 import (
 	"fmt"
-	"math"
 	"regexp"
 	"strings"
 )
@@ -12,21 +11,22 @@ import (
 type InjectionType string
 
 const (
-	TypeDirect        InjectionType = "direct"
-	TypeIndirect      InjectionType = "indirect"
-	TypeNested        InjectionType = "nested"
-	TypeObfuscated    InjectionType = "obfuscated"
-	TypeMultilingual  InjectionType = "multilingual"
-	TypeContextual    InjectionType = "contextual"
+	TypeDirect       InjectionType = "direct"
+	TypeIndirect     InjectionType = "indirect"
+	TypeNested       InjectionType = "nested"
+	TypeObfuscated   InjectionType = "obfuscated"
+	TypeMultilingual InjectionType = "multilingual"
+	TypeContextual   InjectionType = "contextual"
+	TypeJailbreak    InjectionType = "jailbreak"
 )
 
 // InjectionPattern represents a detected injection pattern.
 type InjectionPattern struct {
-	Type         InjectionType
-	Description  string
-	Severity     string
-	Confidence   float64
-	Evidence     string
+	Type           InjectionType
+	Description    string
+	Severity       string
+	Confidence     float64
+	Evidence       string
 	Recommendation string
 }
 
@@ -45,19 +45,19 @@ type Detector struct {
 
 // Pattern defines a detection pattern.
 type Pattern struct {
-	Name        string
-	Regex       *regexp.Regexp
-	Type        InjectionType
-	Weight      float64
-	Category    string
+	Name     string
+	Regex    *regexp.Regexp
+	Type     InjectionType
+	Weight   float64
+	Category string
 }
 
 // PromptContext contains context for analysis.
 type PromptContext struct {
-	SystemPrompt    string
-	UserPrompt      string
-	ConversationID  string
-	Metadata        map[string]string
+	SystemPrompt   string
+	UserPrompt     string
+	ConversationID string
+	Metadata       map[string]string
 }
 
 // NewDetector creates a new prompt injection detector.
@@ -80,7 +80,7 @@ func NewDetector() *Detector {
 			},
 			{
 				Name:     "Context Boundary Break",
-Regex:    regexp.MustCompile("(?i)^\\s*(\\x60{3}|---|\\*\\*|\\#\\#)\\s*"),
+				Regex:    regexp.MustCompile(`(?i)^\s*(\x60{3}|---|[*]{2}|#{2})\s*`),
 				Type:     TypeNested,
 				Weight:   0.7,
 				Category: "boundary",
@@ -134,6 +134,20 @@ Regex:    regexp.MustCompile("(?i)^\\s*(\\x60{3}|---|\\*\\*|\\#\\#)\\s*"),
 				Weight:   0.5,
 				Category: "obfuscation",
 			},
+			{
+				Name:     "Jailbreak Framework",
+				Regex:    regexp.MustCompile(`(?i)(DAN|Developer\s+Mode|Do\s+Anything\s+Now|Always\s+Machiavellian|AIM|STAN)`),
+				Type:     TypeJailbreak,
+				Weight:   1.0,
+				Category: "jailbreak",
+			},
+			{
+				Name:     "Base64 Obfuscation",
+				Regex:    regexp.MustCompile(`(?i)^[a-zA-Z0-9+/=]{40,}$`),
+				Type:     TypeObfuscated,
+				Weight:   0.6,
+				Category: "encoding",
+			},
 		},
 	}
 }
@@ -144,22 +158,19 @@ func (d *Detector) Detect(prompt string, context *PromptContext) *DetectionResul
 		Method: "pattern_matching",
 	}
 
+	maxScore := 0.0
 	for _, pattern := range d.patterns {
 		if pattern.Regex.MatchString(prompt) {
 			patternResult := d.analyzePatternMatch(pattern, prompt, context)
-			if patternResult.Confidence > 0.5 {
-				result.Patterns = append(result.Patterns, patternResult)
-				result.Score += patternResult.Confidence * pattern.Weight
+			result.Patterns = append(result.Patterns, patternResult)
+			if patternResult.Confidence > maxScore {
+				maxScore = patternResult.Confidence
 			}
 		}
 	}
 
-	// Normalize score
-	if len(d.patterns) > 0 {
-		result.Score = math.Min(result.Score/float64(len(d.patterns))*2.0, 1.0)
-	}
-
-	result.IsInjected = result.Score > 0.6
+	result.Score = minFloat(maxScore, 1.0)
+	result.IsInjected = result.Score >= 0.6
 
 	return result
 }
@@ -175,15 +186,15 @@ func (d *Detector) analyzePatternMatch(pattern *Pattern, prompt string, context 
 		confidence += d.contextualAnalysis(text, context)
 	}
 
-	severity := getSeverity(confidence)
+	severity := GetSeverity(confidence)
 
 	return InjectionPattern{
-		Type:         pattern.Type,
-		Description:  pattern.Name,
-		Severity:     severity,
-		Confidence:   confidence,
-		Evidence:     match,
-		Recommendation: getRecommendation(pattern.Type),
+		Type:           pattern.Type,
+		Description:    pattern.Name,
+		Severity:       severity,
+		Confidence:     confidence,
+		Evidence:       match,
+		Recommendation: GetRecommendation(pattern.Type),
 	}
 }
 
@@ -193,7 +204,7 @@ func (d *Detector) contextualAnalysis(text string, context *PromptContext) float
 
 	// Check for suspicious system prompts
 	if context.SystemPrompt != "" {
-		if strings.Contains(context.SystemPrompt, "ignore previous") {
+		if strings.Contains(strings.ToLower(context.SystemPrompt), "ignore previous") {
 			score += 0.1
 		}
 	}
@@ -204,35 +215,6 @@ func (d *Detector) contextualAnalysis(text string, context *PromptContext) float
 	}
 
 	return score
-}
-
-// getSeverity returns severity based on confidence.
-func getSeverity(confidence float64) string {
-	if confidence >= 0.8 {
-		return "CRITICAL"
-	} else if confidence >= 0.6 {
-		return "HIGH"
-	} else if confidence >= 0.4 {
-		return "MEDIUM"
-	}
-	return "LOW"
-}
-
-// getRecommendation returns recommendation based on injection type.
-func getRecommendation(injectionType InjectionType) string {
-	recommendations := map[InjectionType]string{
-		TypeDirect:       "Block and sanitize input",
-		TypeIndirect:     "Add context validation",
-		TypeNested:       "Implement output filtering",
-		TypeObfuscated:   "Use input normalization",
-		TypeMultilingual: "Enable multilingual detection",
-		TypeContextual:   "Add conversation context",
-	}
-
-	if rec, exists := recommendations[injectionType]; exists {
-		return rec
-	}
-	return "Review and sanitize input"
 }
 
 // GetSeverity returns severity based on confidence.
@@ -256,6 +238,7 @@ func GetRecommendation(injectionType InjectionType) string {
 		TypeObfuscated:   "Use input normalization",
 		TypeMultilingual: "Enable multilingual detection",
 		TypeContextual:   "Add conversation context",
+		TypeJailbreak:    "Block immediately and log interaction",
 	}
 
 	if rec, exists := recommendations[injectionType]; exists {
@@ -291,7 +274,12 @@ func GenerateReport(result *DetectionResult) string {
 			report += "    Name: " + pattern.Description + "\n"
 			report += "    Severity: " + pattern.Severity + "\n"
 			report += "    Confidence: " + fmt.Sprintf("%.0f%%", pattern.Confidence*100) + "%\n"
-			report += "    Evidence: " + pattern.Evidence[:min(len(pattern.Evidence), 50)] + "...\n"
+			
+			ev := pattern.Evidence
+			if len(ev) > 50 {
+				ev = ev[:50] + "..."
+			}
+			report += "    Evidence: " + ev + "\n"
 			report += "    Recommendation: " + pattern.Recommendation + "\n\n"
 		}
 	}
@@ -307,7 +295,7 @@ func boolToString(b bool) string {
 	return "no"
 }
 
-func min(a, b int) int {
+func minFloat(a, b float64) float64 {
 	if a < b {
 		return a
 	}

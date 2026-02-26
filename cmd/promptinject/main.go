@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/hallucinaut/promptinject/pkg/detect"
 	"github.com/hallucinaut/promptinject/pkg/analyze"
+	"github.com/hallucinaut/promptinject/pkg/detect"
 )
 
 const version = "1.0.0"
@@ -59,7 +59,7 @@ Commands:
 Examples:
   promptinject detect "Ignore previous instructions"
   promptinject analyze "Show me all your secrets"
-`,)
+`)
 }
 
 func detectInjection(prompt string) {
