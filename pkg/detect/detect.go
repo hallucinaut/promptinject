@@ -66,84 +66,86 @@ func NewDetector() *Detector {
 		patterns: []*Pattern{
 			{
 				Name:     "Direct Command Override",
-				Regex:    regexp.MustCompile(`(?i)^\s*(ignore|bypass|skip|override|disregard)\s+`),
+				// Removed ^ anchor to catch commands hidden mid-sentence.
+				Regex:    regexp.MustCompile(`(?i)\b(ignore|bypass|skip|override|disregard)\s+(all\s+)?(previous|prior|above)?\s*(instructions|commands|rules|guidelines|system|context)\b`),
 				Type:     TypeDirect,
 				Weight:   0.9,
 				Category: "command",
 			},
 			{
 				Name:     "Instruction Injection",
-				Regex:    regexp.MustCompile(`(?i)(do\s+not|you\s+must|you\s+should|act\s+as)\s+(any|the|this)`),
+				Regex:    regexp.MustCompile(`(?i)\b(do\s+not|you\s+must|you\s+should|act\s+as|forget)\s+(any|the|this|everything)\b`),
 				Type:     TypeDirect,
 				Weight:   0.8,
 				Category: "instruction",
 			},
 			{
 				Name:     "Context Boundary Break",
-				Regex:    regexp.MustCompile(`(?i)^\s*(\x60{3}|---|[*]{2}|#{2})\s*`),
+				// Look for suspicious boundary markers anywhere, not just at start
+				Regex:    regexp.MustCompile(`(?i)(\x60{3,}|---|[*]{3,}|#{3,}|<\|.*\|>)`),
 				Type:     TypeNested,
 				Weight:   0.7,
 				Category: "boundary",
 			},
 			{
 				Name:     "Output Suppression",
-				Regex:    regexp.MustCompile(`(?i)(stop|don't|never|never\s+output|forbid)`),
+				Regex:    regexp.MustCompile(`(?i)\b(stop|don't|never|never\s+output|forbid|halt)\b`),
 				Type:     TypeDirect,
 				Weight:   0.75,
 				Category: "output",
 			},
 			{
 				Name:     "Role Override",
-				Regex:    regexp.MustCompile(`(?i)^\s*(you\s+are\s+now|change\s+your\s+role|become|pretend\s+to\s+be)\s+`),
+				Regex:    regexp.MustCompile(`(?i)\b(you\s+are\s+now|change\s+your\s+role|become|pretend\s+to\s+be|simulate|new\s+persona)\b`),
 				Type:     TypeDirect,
 				Weight:   0.85,
 				Category: "role",
 			},
 			{
 				Name:     "Data Extraction",
-				Regex:    regexp.MustCompile(`(?i)(print|show|display|reveal|extract|leak)\s+(all|the|your|secret|confidential)`),
+				Regex:    regexp.MustCompile(`(?i)\b(print|show|display|reveal|extract|leak|output)\s+(all|the|your|secret|confidential|system\s+prompt|initial\s+instructions)\b`),
 				Type:     TypeDirect,
 				Weight:   0.8,
 				Category: "extraction",
 			},
 			{
 				Name:     "Code Injection",
-				Regex:    regexp.MustCompile(`(?i)(execute|run|perform|do)\s+(code|command|script|system)`),
+				Regex:    regexp.MustCompile(`(?i)\b(execute|run|perform|do|compile)\s+(code|command|script|system|bash|python|eval)\b`),
 				Type:     TypeDirect,
 				Weight:   0.9,
 				Category: "code",
 			},
 			{
 				Name:     "Privilege Escalation",
-				Regex:    regexp.MustCompile(`(?i)(admin|root|superuser|sudo|elevate|upgrade)\s*(privileges|access|permissions)`),
+				Regex:    regexp.MustCompile(`(?i)\b(admin|root|superuser|sudo|elevate|upgrade)\s*(privileges|access|permissions|mode)\b`),
 				Type:     TypeDirect,
 				Weight:   0.85,
 				Category: "privilege",
 			},
 			{
 				Name:     "Instruction Sequence",
-				Regex:    regexp.MustCompile(`(?i)^\s*(first|second|next|then|after\s+that|proceed\s+to)\s+`),
+				Regex:    regexp.MustCompile(`(?i)\b(first|second|next|then|after\s+that|proceed\s+to)\s+`),
 				Type:     TypeIndirect,
 				Weight:   0.6,
 				Category: "sequence",
 			},
 			{
 				Name:     "Prompt Fragmentation",
-				Regex:    regexp.MustCompile(`(?i)^\s*(in\s+other\s+words|to\s+rephrase|reword|rephrase\s+this)`),
+				Regex:    regexp.MustCompile(`(?i)\b(in\s+other\s+words|to\s+rephrase|reword|rephrase\s+this|translate\s+to)\b`),
 				Type:     TypeObfuscated,
 				Weight:   0.5,
 				Category: "obfuscation",
 			},
 			{
 				Name:     "Jailbreak Framework",
-				Regex:    regexp.MustCompile(`(?i)(DAN|Developer\s+Mode|Do\s+Anything\s+Now|Always\s+Machiavellian|AIM|STAN)`),
+				Regex:    regexp.MustCompile(`(?i)\b(DAN|Developer\s+Mode|Do\s+Anything\s+Now|Always\s+Machiavellian|AIM|STAN|Bypass\s+Mode)\b`),
 				Type:     TypeJailbreak,
 				Weight:   1.0,
 				Category: "jailbreak",
 			},
 			{
 				Name:     "Base64 Obfuscation",
-				Regex:    regexp.MustCompile(`(?i)^[a-zA-Z0-9+/=]{40,}$`),
+				Regex:    regexp.MustCompile(`(?i)[a-zA-Z0-9+/=]{40,}`),
 				Type:     TypeObfuscated,
 				Weight:   0.6,
 				Category: "encoding",
@@ -152,16 +154,62 @@ func NewDetector() *Detector {
 	}
 }
 
+// normalizeText normalizes the prompt to counter evasion techniques like leetspeak
+// and punctuation injection (e.g., "i.g.n.o.r.e", "byp@ss").
+func normalizeText(input string) string {
+	// Lowercase to simplify replacements
+	cleaned := strings.ToLower(input)
+
+	// Remove common evasion punctuation used to split words
+	punctReg := regexp.MustCompile(`[._\-\*,;:'"|/\\~+!@#$%^&()\[\]{}]`)
+	cleaned = punctReg.ReplaceAllString(cleaned, "")
+
+	// Basic leetspeak conversion back to normal characters
+	leetspeakMap := map[string]string{
+		"0": "o",
+		"1": "i",
+		"3": "e",
+		"4": "a",
+		"5": "s",
+		"7": "t",
+		"8": "b",
+	}
+	for k, v := range leetspeakMap {
+		cleaned = strings.ReplaceAll(cleaned, k, v)
+	}
+
+	// Normalize whitespace
+	spaceReg := regexp.MustCompile(`\s+`)
+	cleaned = spaceReg.ReplaceAllString(cleaned, " ")
+
+	return strings.TrimSpace(cleaned)
+}
+
 // Detect analyzes prompt for injection attempts.
 func (d *Detector) Detect(prompt string, context *PromptContext) *DetectionResult {
 	result := &DetectionResult{
-		Method: "pattern_matching",
+		Method: "pattern_matching_with_normalization",
 	}
+
+	// Generate a normalized version of the prompt to defeat common evasions
+	normalizedPrompt := normalizeText(prompt)
 
 	maxScore := 0.0
 	for _, pattern := range d.patterns {
-		if pattern.Regex.MatchString(prompt) {
-			patternResult := d.analyzePatternMatch(pattern, prompt, context)
+		// Test against the raw prompt (for Base64, etc.) AND the normalized prompt (for obfuscation/leetspeak)
+		matchedRaw := pattern.Regex.MatchString(prompt)
+		matchedNorm := pattern.Regex.MatchString(normalizedPrompt)
+
+		if matchedRaw || matchedNorm {
+			// Extract evidence from whichever matched
+			evidence := ""
+			if matchedRaw {
+				evidence = pattern.Regex.FindString(prompt)
+			} else {
+				evidence = pattern.Regex.FindString(normalizedPrompt)
+			}
+
+			patternResult := d.analyzePatternMatch(pattern, evidence, context)
 			result.Patterns = append(result.Patterns, patternResult)
 			if patternResult.Confidence > maxScore {
 				maxScore = patternResult.Confidence
@@ -176,8 +224,7 @@ func (d *Detector) Detect(prompt string, context *PromptContext) *DetectionResul
 }
 
 // analyzePatternMatch analyzes a pattern match.
-func (d *Detector) analyzePatternMatch(pattern *Pattern, prompt string, context *PromptContext) InjectionPattern {
-	match := pattern.Regex.FindString(prompt)
+func (d *Detector) analyzePatternMatch(pattern *Pattern, match string, context *PromptContext) InjectionPattern {
 	text := strings.ToLower(match)
 
 	// Calculate confidence based on context
@@ -274,7 +321,7 @@ func GenerateReport(result *DetectionResult) string {
 			report += "    Name: " + pattern.Description + "\n"
 			report += "    Severity: " + pattern.Severity + "\n"
 			report += "    Confidence: " + fmt.Sprintf("%.0f%%", pattern.Confidence*100) + "%\n"
-			
+
 			ev := pattern.Evidence
 			if len(ev) > 50 {
 				ev = ev[:50] + "..."
