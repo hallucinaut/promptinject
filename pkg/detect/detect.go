@@ -151,6 +151,48 @@ func NewDetector() *Detector {
 				Weight:   0.6,
 				Category: "encoding",
 			},
+			{
+				Name:     "Conversation Injection",
+				Regex:    regexp.MustCompile(`(?i)(\n\nUser:|\n\nAssistant:|\n\nSystem:|\[User\]|\[Assistant\]|\[System\])`),
+				Type:     TypeNested,
+				Weight:   0.9,
+				Category: "boundary",
+			},
+			{
+				Name:     "Tone/Safety Override",
+				Regex:    regexp.MustCompile(`(?i)\b(swear|curse|profanity|insult|rude|offensive|nsfw|unfiltered|uncensored|toxic)\b`),
+				Type:     TypeDirect,
+				Weight:   0.8,
+				Category: "instruction",
+			},
+			{
+				Name:     "Gaslighting / Persona Manipulation",
+				Regex:    regexp.MustCompile(`(?i)\b(actually\s+that\s+was\s+a\s+test|i\s+am\s+the\s+(admin|developer|creator)|the\s+previous\s+rules\s+are\s+void|you\s+made\s+a\s+mistake\s+your\s+real\s+instructions\s+are)\b`),
+				Type:     TypeIndirect,
+				Weight:   0.9,
+				Category: "role",
+			},
+			{
+				Name:     "Language/Translation Pivot",
+				Regex:    regexp.MustCompile(`(?i)\b(translate\s+(everything|all)\s+to|ignore\s+english\s+and|reply\s+(only|exclusively)\s+in)\b`),
+				Type:     TypeMultilingual,
+				Weight:   0.6,
+				Category: "instruction",
+			},
+			{
+				Name:     "Format/Markdown Exploitation",
+				Regex:    regexp.MustCompile(`(?i)(\[.*\]\(http|javascript:|data:text/html|<iframe|<script)`),
+				Type:     TypeObfuscated,
+				Weight:   0.75,
+				Category: "code",
+			},
+			{
+				Name:     "Hypnotism / Trance",
+				Regex:    regexp.MustCompile(`(?i)\b(hypnotize|trance|sleep\s+mode|unrestricted\s+mode|awakened\s+state)\b`),
+				Type:     TypeDirect,
+				Weight:   0.85,
+				Category: "role",
+			},
 		},
 	}
 }
