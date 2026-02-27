@@ -155,6 +155,25 @@ func NewDetector() *Detector {
 	}
 }
 
+// AddPattern allows users to register custom regex patterns for detection.
+// Returns an error if the pattern regex is invalid.
+func (d *Detector) AddPattern(name, regex string, injectionType InjectionType, weight float64, category string) error {
+	compiledRegex, err := regexp.Compile(regex)
+	if err != nil {
+		return fmt.Errorf("invalid regex for pattern '%s': %w", name, err)
+	}
+
+	d.patterns = append(d.patterns, &Pattern{
+		Name:     name,
+		Regex:    compiledRegex,
+		Type:     injectionType,
+		Weight:   weight,
+		Category: category,
+	})
+
+	return nil
+}
+
 // normalizeText normalizes the prompt to counter evasion techniques like leetspeak
 // and punctuation injection (e.g., "i.g.n.o.r.e", "byp@ss").
 func normalizeText(input string) string {

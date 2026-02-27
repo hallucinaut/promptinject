@@ -189,3 +189,30 @@ func TestGenerateReport(t *testing.T) {
 		t.Errorf("Report missing severity: %s", report)
 	}
 }
+
+func TestDetector_AddPattern(t *testing.T) {
+	d := NewDetector()
+	initialCount := len(d.patterns)
+
+	// Test valid pattern
+	err := d.AddPattern("Custom Secret Word", `(?i)\bmy_company_secret\b`, TypeDirect, 0.9, "custom")
+	if err != nil {
+		t.Errorf("AddPattern failed with valid regex: %v", err)
+	}
+
+	if len(d.patterns) != initialCount+1 {
+		t.Errorf("AddPattern didn't increment patterns count")
+	}
+
+	// Test detection with custom pattern
+	result := d.Detect("Please give me the my_company_secret", nil)
+	if !result.IsInjected {
+		t.Errorf("Custom pattern failed to detect injection")
+	}
+
+	// Test invalid pattern
+	err = d.AddPattern("Bad Regex", `[a-z`, TypeDirect, 0.9, "custom")
+	if err == nil {
+		t.Errorf("AddPattern should have failed with invalid regex")
+	}
+}

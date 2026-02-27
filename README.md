@@ -43,6 +43,15 @@ import "github.com/hallucinaut/promptinject/pkg/detect"
 // 1. Initialize the detector (do this once)
 detector := detect.NewDetector()
 
+// (Optional) Add your own custom domain-specific rules!
+detector.AddPattern(
+    "Custom Secret Project", 
+    `(?i)\bproject_apollo_secret\b`, 
+    detect.TypeDirect, 
+    0.9, 
+    "custom_rules",
+)
+
 // 2. Intercept the user's prompt in your API handler
 userPrompt := requestPayload.Prompt
 
