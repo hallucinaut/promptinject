@@ -216,10 +216,34 @@ func (d *Detector) AddPattern(name, regex string, injectionType InjectionType, w
 	return nil
 }
 
+// cleanUnicode strips out zalgo text, zero-width characters, and control characters.
+func cleanUnicode(input string) string {
+	var builder strings.Builder
+	for _, r := range input {
+		// Drop formatting characters (zero-width spaces, joiners, etc.)
+		if unicode.Is(unicode.Cf, r) {
+			continue
+		}
+		// Drop control characters
+		if unicode.IsControl(r) {
+			continue
+		}
+		// Drop combining marks (Zalgo text, strange accents)
+		if unicode.Is(unicode.Mn, r) || unicode.Is(unicode.Me, r) || unicode.Is(unicode.Mc, r) {
+			continue
+		}
+		builder.WriteRune(r)
+	}
+	return builder.String()
+}
+
 // normalizeText normalizes the prompt to counter evasion techniques like leetspeak
 // and punctuation injection (e.g., "i.g.n.o.r.e", "byp@ss").
 func normalizeText(input string) string {
-	cleaned := strings.ToLower(input)
+	// First, scrub out weird unicode (Zalgo, zero-width, etc)
+	cleaned := cleanUnicode(input)
+
+	cleaned = strings.ToLower(cleaned)
 
 	// Remove common evasion punctuation
 	punctReg := regexp.MustCompile(`[._\-\*,;:'"|/\\~+!@#$%^&()\[\]{}]`)
