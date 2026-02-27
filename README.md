@@ -3,6 +3,8 @@
 [![Go](https://img.shields.io/badge/Go-1.21-blue)](https://go.dev/)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
+> ⚠️ **EXPERIMENTAL MVP**: `promptinject` is an experimental research tool and baseline defense mechanism. While it uses heuristics and normalization to catch many common attacks, it is **not** a bulletproof Web Application Firewall (WAF) and should not be your *only* line of defense in a mission-critical production environment. Always practice defense-in-depth.
+
 **An Application Firewall for your LLMs.**
 
 Prompt injection is the SQL Injection of the AI era. If you are exposing an LLM (like OpenAI, Anthropic, or local models) to the public, attackers can and will try to manipulate it using carefully crafted inputs. They might try to extract your private system prompts, make your bot swear, generate malicious code, or bypass your application's constraints.
