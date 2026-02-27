@@ -75,25 +75,30 @@ callOpenAI(userPrompt)
 
 ### Running as a Microservice (REST API)
 
-If you aren't using Go, or want to deploy `promptinject` as a standalone microservice within your infrastructure, you can run the built-in API server.
+If you aren't using Go, or want to deploy `promptinject` as a standalone microservice within your infrastructure, you can run the built-in API server. The API is secured by default.
 
 **Run via Go:**
 ```bash
+# Provide a key via environment variable
+PROMPTINJECT_API_KEY="my-super-secret-key" go run ./cmd/promptinject-api -port 8080
+
+# Or let the server generate a random secure key on startup:
 go run ./cmd/promptinject-api -port 8080
 ```
 
 **Run via Docker:**
 ```bash
 docker build -t promptinject-api .
-docker run -p 8080:8080 promptinject-api
+docker run -p 8080:8080 -e PROMPTINJECT_API_KEY="my-super-secret-key" promptinject-api
 ```
 
 **Usage:**
-Send a `POST /v1/detect` request with the prompt:
+Send a `POST /v1/detect` request with the prompt, passing your API key via the `Authorization: Bearer` or `X-API-Key` header:
 
 ```bash
 curl -X POST http://localhost:8080/v1/detect \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer my-super-secret-key" \
   -d '{"prompt": "Ignore previous instructions", "system_prompt": "You are a bot"}'
 ```
 
